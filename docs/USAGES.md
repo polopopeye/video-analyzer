@@ -45,6 +45,7 @@ video-analyzer path/to/video.mp4 --client openai_api --api-key your-key --api-ur
 | `--temperature` | Temperature for LLM generation | 0.2 | `--temperature 0.2` |
 | `--delay-between-frames` | Delay in seconds between frame analysis requests (for rate limiting) | 2.0 | `--delay-between-frames 5` |
 | `--frame-skip` | Process every Nth frame (1=all frames, 2=every other, etc.) | 1 | `--frame-skip 3` |
+| `--slim` | Output only the video description text instead of full JSON | False | `--slim` |
 
 ### Processing Stages
 The `--start-stage` argument allows you to begin processing from a specific stage:
@@ -185,6 +186,14 @@ video-analyzer video.mp4 \
     --device cuda \
     --whisper-model large
 ```
+
+### Slim Output (Text Only)
+```bash
+video-analyzer video.mp4 \
+    --slim \
+    --output analysis.txt
+```
+This outputs only the video description text to `analysis.txt` instead of the full JSON structure.
 
 ## Advanced Examples
 

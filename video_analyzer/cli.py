@@ -85,6 +85,8 @@ def main():
                         help="Delay in seconds between frame analysis requests (default: 2.0)")
     parser.add_argument("--frame-skip", type=int, default=1,
                         help="Process every Nth frame (default: 1, process all frames)")
+    parser.add_argument("--slim", action="store_true",
+                        help="Output only the video description text instead of full JSON")
     args = parser.parse_args()
 
     # Set up logging with specified level
@@ -211,29 +213,44 @@ def main():
             )
         
         output_dir.mkdir(parents=True, exist_ok=True)
-        results = {
-            "metadata": {
-                "client": config.get("clients", {}).get("default"),
-                "model": model,
-                "whisper_model": config.get("audio", {}).get("whisper_model"),
-                "frames_per_minute": config.get("frames", {}).get("per_minute"),
-                "duration_processed": config.get("duration"),
-                "frames_extracted": len(frames),
-                "frames_processed": min(len(frames), args.max_frames),
-                "start_stage": args.start_stage,
-                "audio_language": transcript.language if transcript else None,
-                "transcription_successful": transcript is not None
-            },
-            "transcript": {
-                "text": transcript.text if transcript else None,
-                "segments": transcript.segments if transcript else None
-            } if transcript else None,
-            "frame_analyses": frame_analyses,
-            "video_description": video_description
-        }
         
-        with open(output_dir / output_file, "w") as f:
-            json.dump(results, f, indent=2)
+        if args.slim:
+            # In slim mode, only output the video description text
+            if video_description and video_description.get("response"):
+                output_text = video_description.get("response", "No description generated")
+                
+                # Write as plain text file
+                slim_output_file = output_file.replace('.json', '.txt') if output_file.endswith('.json') else output_file + '.txt'
+                with open(output_dir / slim_output_file, "w") as f:
+                    f.write(output_text)
+                logger.info(f"Slim output saved to {output_dir / slim_output_file}")
+            else:
+                logger.error("No video description available for slim output")
+        else:
+            # Regular JSON output
+            results = {
+                "metadata": {
+                    "client": config.get("clients", {}).get("default"),
+                    "model": model,
+                    "whisper_model": config.get("audio", {}).get("whisper_model"),
+                    "frames_per_minute": config.get("frames", {}).get("per_minute"),
+                    "duration_processed": config.get("duration"),
+                    "frames_extracted": len(frames),
+                    "frames_processed": min(len(frames), args.max_frames),
+                    "start_stage": args.start_stage,
+                    "audio_language": transcript.language if transcript else None,
+                    "transcription_successful": transcript is not None
+                },
+                "transcript": {
+                    "text": transcript.text if transcript else None,
+                    "segments": transcript.segments if transcript else None
+                } if transcript else None,
+                "frame_analyses": frame_analyses,
+                "video_description": video_description
+            }
+            
+            with open(output_dir / output_file, "w") as f:
+                json.dump(results, f, indent=2)
             
         logger.info("\nTranscript:")
         if transcript:
@@ -248,7 +265,11 @@ def main():
         if not config.get("keep_frames"):
             cleanup_files(output_dir)
         
-        logger.info(f"Analysis complete. Results saved to {output_dir / output_file}")
+        if args.slim:
+            actual_output_file = output_file.replace('.json', '.txt') if output_file.endswith('.json') else output_file + '.txt'
+        else:
+            actual_output_file = output_file
+        logger.info(f"Analysis complete. Results saved to {output_dir / actual_output_file}")
             
     except Exception as e:
         logger.error(f"Error during video analysis: {e}")

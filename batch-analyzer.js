@@ -123,7 +123,7 @@ async function analyzeVideo(videoPath, options) {
   const baseNameLower = path.basename(videoPath, '.mp4');
   const finalBaseName = baseName !== videoPath ? baseName : baseNameLower;
   const directory = path.dirname(videoPath);
-  const outputPath = path.join(directory, `${finalBaseName}.json`);
+  const outputPath = path.join(directory, `${finalBaseName}.txt`);
   
   // Check if already analyzed (skip by default unless force is enabled)
   if (!options.force && await fileExists(outputPath)) {
@@ -131,7 +131,7 @@ async function analyzeVideo(videoPath, options) {
   }
   
   // Build command with options
-  const command = `video-analyzer "${videoPath}" --delay-between-frames ${options.delay} --frame-skip ${options.frameSkip} --output "${outputPath}"`;
+  const command = `video-analyzer "${videoPath}" --slim --delay-between-frames ${options.delay} --frame-skip ${options.frameSkip} --output "${outputPath}"`;
   
   try {
     const startTime = Date.now();
@@ -187,7 +187,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   const options = {
     delay: 0,
-    frameSkip: 10,
+    frameSkip: 30,
     force: false,
     recursive: true,
     directory: null
@@ -234,7 +234,7 @@ ${colors.yellow}Usage:${colors.reset}
 
 ${colors.yellow}Options:${colors.reset}
   --delay, -d <seconds>     Delay between frames (default: 0)
-  --frame-skip, -f <n>      Process every Nth frame (default: 10)
+  --frame-skip, -f <n>      Process every Nth frame (default: 30)
   --force                   Force re-analyze existing files
   --recursive, -r           Search subdirectories recursively
   --help, -h                Show this help message
@@ -304,7 +304,7 @@ async function main() {
     const baseName = path.basename(file, '.MP4');
     const baseNameLower = path.basename(file, '.mp4');
     const finalBaseName = baseName !== file ? baseName : baseNameLower;
-    const outputPath = path.join(path.dirname(file), `${finalBaseName}.json`);
+    const outputPath = path.join(path.dirname(file), `${finalBaseName}.txt`);
     const exists = await fileExists(outputPath);
     
     if (exists && !options.force) {

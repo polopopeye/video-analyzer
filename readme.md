@@ -31,6 +31,7 @@ A video analysis tool that combines vision models like Llama's 11B vision model 
 - 📝 Natural language descriptions of video content
 - 🔄 Automatic handling of poor quality audio
 - 📊 Detailed JSON output of analysis results
+- 📄 Slim text-only output option for just the video description
 - ⚙️ Highly configurable through command line arguments or config file
 
 ## Design
