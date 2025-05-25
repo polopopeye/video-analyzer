@@ -62,7 +62,7 @@ def main():
     parser.add_argument("video_path", type=str, help="Path to the video file")
     parser.add_argument("--config", type=str, default="config",
                         help="Path to configuration directory")
-    parser.add_argument("--output", type=str, help="Output directory for analysis results")
+    parser.add_argument("--output", type=str, help="Output path for analysis results (can be directory or file path)")
     parser.add_argument("--client", type=str, help="Client to use (ollama or openrouter)")
     parser.add_argument("--ollama-url", type=str, help="URL for the Ollama service")
     parser.add_argument("--api-key", type=str, help="API key for OpenAI-compatible service")
@@ -81,6 +81,10 @@ def main():
     parser.add_argument("--language", type=str, default=None)
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--temperature", type=float, help="Temperature for LLM generation")
+    parser.add_argument("--delay-between-frames", type=float, default=2.0, 
+                        help="Delay in seconds between frame analysis requests (default: 2.0)")
+    parser.add_argument("--frame-skip", type=int, default=1,
+                        help="Process every Nth frame (default: 1, process all frames)")
     args = parser.parse_args()
 
     # Set up logging with specified level
@@ -100,7 +104,23 @@ def main():
 
     # Initialize components
     video_path = Path(args.video_path)
-    output_dir = Path(config.get("output_dir"))
+    
+    # Handle output path - can be either a directory or a file path
+    if args.output:
+        output_path = Path(args.output)
+        if output_path.suffix == '.json':
+            # User specified a file path
+            output_dir = output_path.parent
+            output_file = output_path.name
+        else:
+            # User specified a directory
+            output_dir = output_path
+            output_file = "analysis.json"
+    else:
+        # Use default from config
+        output_dir = Path(config.get("output_dir"))
+        output_file = "analysis.json"
+    
     client = create_client(config)
     model = get_model(config)
     prompt_loader = PromptLoader(config.get("prompt_dir"), config.get("prompts", []))
@@ -161,15 +181,33 @@ def main():
                 config.get("prompt", "")
             )
             frame_analyses = []
-            for frame in frames:
+            import time
+            
+            # Add rate limiting between frame analysis
+            delay_between_frames = args.delay_between_frames
+            
+            # Apply frame skip if specified
+            if args.frame_skip > 1:
+                frames_to_process = frames[::args.frame_skip]
+                logger.info(f"Frame skip enabled: processing every {args.frame_skip} frames ({len(frames_to_process)} frames instead of {len(frames)})")
+            else:
+                frames_to_process = frames
+            
+            for i, frame in enumerate(frames_to_process):
+                logger.info(f"Analyzing frame {i+1}/{len(frames_to_process)}...")
                 analysis = analyzer.analyze_frame(frame)
                 frame_analyses.append(analysis)
+                
+                # Add delay between frames to avoid rate limiting
+                if i < len(frames_to_process) - 1:  # Don't delay after the last frame
+                    logger.info(f"Waiting {delay_between_frames} seconds before next frame...")
+                    time.sleep(delay_between_frames)
                 
         # Stage 3: Video Reconstruction
         if args.start_stage <= 3:
             logger.info("Reconstructing video description...")
             video_description = analyzer.reconstruct_video(
-                frame_analyses, frames, transcript
+                frame_analyses, frames_to_process, transcript
             )
         
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -194,7 +232,7 @@ def main():
             "video_description": video_description
         }
         
-        with open(output_dir / "analysis.json", "w") as f:
+        with open(output_dir / output_file, "w") as f:
             json.dump(results, f, indent=2)
             
         logger.info("\nTranscript:")
@@ -210,7 +248,7 @@ def main():
         if not config.get("keep_frames"):
             cleanup_files(output_dir)
         
-        logger.info(f"Analysis complete. Results saved to {output_dir / 'analysis.json'}")
+        logger.info(f"Analysis complete. Results saved to {output_dir / output_file}")
             
     except Exception as e:
         logger.error(f"Error during video analysis: {e}")

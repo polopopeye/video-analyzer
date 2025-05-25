@@ -43,6 +43,8 @@ video-analyzer path/to/video.mp4 --client openai_api --api-key your-key --api-ur
 | `--language` | Set language for transcription | None (auto-detect) | `--language en` |
 | `--device` | Select device for Whisper model | cpu | `--device cuda` |
 | `--temperature` | Temperature for LLM generation | 0.2 | `--temperature 0.2` |
+| `--delay-between-frames` | Delay in seconds between frame analysis requests (for rate limiting) | 2.0 | `--delay-between-frames 5` |
+| `--frame-skip` | Process every Nth frame (1=all frames, 2=every other, etc.) | 1 | `--frame-skip 3` |
 
 ### Processing Stages
 The `--start-stage` argument allows you to begin processing from a specific stage:
@@ -230,3 +232,34 @@ video-analyzer video.mp4 \
     --whisper-model /path/to/whisper/model \
     --device cuda \
     --start-stage 1
+```
+
+### Handling Rate Limits
+When using external APIs like OpenRouter, you may encounter rate limiting errors (429). Use these options to avoid them:
+
+```bash
+# Add delay between frame processing
+video-analyzer video.mp4 \
+    --client openai_api \
+    --api-key your-key \
+    --api-url https://openrouter.ai/api/v1 \
+    --model meta-llama/llama-3.2-11b-vision-instruct:free \
+    --delay-between-frames 5
+
+# Process only every 3rd frame
+video-analyzer video.mp4 \
+    --client openai_api \
+    --api-key your-key \
+    --api-url https://openrouter.ai/api/v1 \
+    --model meta-llama/llama-3.2-11b-vision-instruct:free \
+    --frame-skip 3
+
+# Combine both strategies for very strict rate limits
+video-analyzer video.mp4 \
+    --client openai_api \
+    --api-key your-key \
+    --api-url https://openrouter.ai/api/v1 \
+    --model meta-llama/llama-3.2-11b-vision-instruct:free \
+    --delay-between-frames 10 \
+    --frame-skip 5 \
+    --max-frames 10
