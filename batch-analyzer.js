@@ -189,7 +189,7 @@ function parseArgs() {
     delay: 0,
     frameSkip: 10,
     force: false,
-    recursive: false,
+    recursive: true,
     directory: null
   };
   
